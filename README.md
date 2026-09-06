@@ -23,7 +23,7 @@
 - 输入格式自动识别：Clash YAML、URI 文本列表、Base64/Base64URL URI 列表。
 - 协议支持：Trojan、VLESS、VMess、Shadowsocks、SSR、Hysteria2/Hy2、TUIC。
 - 使用 ACL4SSR INI 生成 `proxy-groups` 和 `rules`。
-- `proxies` 中每个节点使用单行 flow-style YAML 输出，便于复制、比较和兼容现有订阅格式。
+- `proxies` 中每个节点使用单行 flow-style YAML 输出；字符串值统一加双引号，避免 URI path 或密码中的 YAML 特殊字符造成 Mihomo 解析错误。
 - 节点名称正则支持取反与组合表达式，例如 `!TAISHAN`、`!TAISHAN&&!LLG`。
 - 来源标签会附加到节点名称，例如 `Hong Kong 01 [HK] [WORK]`，便于 ACL 正则匹配。
 - 带精确 `PRIVATE` 标签的节点只出现在管理员订阅中，不会进入用户订阅或用户代理组。

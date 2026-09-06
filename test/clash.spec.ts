@@ -89,7 +89,7 @@ describe("Clash parsing and filtering", () => {
 				["MATCH,节点选择"],
 		);
 		expect(rendered).toMatch(
-			/^\s*- \{name: HK-01, type: ss, server: hk\.example\.com, port: 443, password: secret\}$/m,
+			/^\s*- \{name: "HK-01", type: "ss", server: "hk\.example\.com", port: 443, password: "secret"\}$/m,
 		);
 		const document = parse(rendered);
 		expect(document.port).toBe(7890);
@@ -112,7 +112,7 @@ describe("Clash parsing and filtering", () => {
 						tls: true,
 						network: "ws",
 						"ws-opts": {
-							path: "/websocket",
+							path: "/?ed=2560",
 							headers: { Host: "edge.example.com" },
 						},
 					},
@@ -123,10 +123,11 @@ describe("Clash parsing and filtering", () => {
 		);
 		const proxyLine = rendered
 			.split("\n")
-			.find((line) => line.trimStart().startsWith("- {name: VLESS-WS"));
+			.find((line) => line.trimStart().startsWith('- {name: "VLESS-WS"'));
 		expect(proxyLine).toContain(
-			"ws-opts: {path: /websocket, headers: {Host: edge.example.com}}",
+			'ws-opts: {path: "/?ed=2560", headers: {Host: "edge.example.com"}}',
 		);
+		expect(parse(rendered).proxies[0]["ws-opts"].path).toBe("/?ed=2560");
 		expect(parse(rendered).proxies[0]["ws-opts"].headers.Host).toBe(
 			"edge.example.com",
 		);

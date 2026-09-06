@@ -1,4 +1,4 @@
-import { Document, isMap, isSeq, parse } from "yaml";
+import { Document, isMap, isScalar, isSeq, parse, Scalar } from "yaml";
 import type { SubscriptionSource } from "./config";
 
 export type ClashProxy = Record<string, unknown> & {
@@ -141,6 +141,20 @@ export interface ClashOutput {
 	rules: string[];
 }
 
+function quoteFlowStringValues(node: unknown): void {
+	if (isScalar(node)) {
+		if (typeof node.value === "string") node.type = Scalar.QUOTE_DOUBLE;
+		return;
+	}
+	if (isMap(node)) {
+		for (const pair of node.items) quoteFlowStringValues(pair.value);
+		return;
+	}
+	if (isSeq(node)) {
+		for (const item of node.items) quoteFlowStringValues(item);
+	}
+}
+
 export function renderClash(
 	proxies: TaggedProxy[],
 	groups: Array<Record<string, unknown>>,
@@ -161,7 +175,10 @@ export function renderClash(
 	const proxyNodes = document.get("proxies", true);
 	if (isSeq(proxyNodes)) {
 		for (const proxyNode of proxyNodes.items) {
-			if (isMap(proxyNode)) proxyNode.flow = true;
+			if (isMap(proxyNode)) {
+				proxyNode.flow = true;
+				quoteFlowStringValues(proxyNode);
+			}
 		}
 	}
 	return document.toString({ flowCollectionPadding: false, lineWidth: 0 });

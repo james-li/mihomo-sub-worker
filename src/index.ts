@@ -13,7 +13,7 @@ import { errorResponse, jsonResponse, methodNotAllowed } from "./http";
 import { createQrSvg } from "./qr";
 import { ADMIN_APP_JS, adminHtml } from "./ui";
 
-const OUTPUT_FORMAT_VERSION = "2";
+const OUTPUT_FORMAT_VERSION = "3";
 
 function adminPageResponse(pathname: string): Response {
 	const scriptPath = `${pathname.replace(/\/$/, "")}/app.js`;

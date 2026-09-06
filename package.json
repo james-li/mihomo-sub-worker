@@ -7,6 +7,8 @@
     "dev": "wrangler dev",
     "start": "wrangler dev",
     "test": "vitest",
+    "test:run": "vitest run",
+    "typecheck": "tsc --noEmit",
     "cf-typegen": "wrangler types"
   },
   "devDependencies": {
@@ -15,5 +17,9 @@
     "typescript": "^5.5.2",
     "vitest": "~4.1.0",
     "wrangler": "^4.129.0"
+  },
+  "dependencies": {
+    "qrcode-generator": "2.0.4",
+    "yaml": "^2.8.1"
   }
 }

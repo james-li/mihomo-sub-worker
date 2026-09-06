@@ -13,6 +13,8 @@ import { errorResponse, jsonResponse, methodNotAllowed } from "./http";
 import { createQrSvg } from "./qr";
 import { ADMIN_APP_JS, adminHtml } from "./ui";
 
+const OUTPUT_FORMAT_VERSION = "2";
+
 function adminPageResponse(pathname: string): Response {
 	const scriptPath = `${pathname.replace(/\/$/, "")}/app.js`;
 	return new Response(adminHtml(scriptPath), {
@@ -33,7 +35,7 @@ async function clashResponse(
 ): Promise<Response> {
 	try {
 		const config = await loadConfig(env);
-		const cacheIdentity = `${visibility}:${config.version}`;
+		const cacheIdentity = `${OUTPUT_FORMAT_VERSION}:${visibility}:${config.version}`;
 		let result = await readCache<Awaited<ReturnType<typeof generateSubscription>>>(
 			"generated",
 			cacheIdentity,

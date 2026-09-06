@@ -83,16 +83,53 @@ describe("Clash parsing and filtering", () => {
 			),
 			"admin",
 		);
-		const document = parse(
-			renderClash(
+		const rendered = renderClash(
 				proxies,
 				[{ name: "节点选择", type: "select", proxies: ["HK-01"] }],
 				["MATCH,节点选择"],
-			),
 		);
+		expect(rendered).toMatch(
+			/^\s*- \{name: HK-01, type: ss, server: hk\.example\.com, port: 443, password: secret\}$/m,
+		);
+		const document = parse(rendered);
 		expect(document.port).toBe(7890);
 		expect(document.proxies).toHaveLength(1);
 		expect(document["proxy-groups"][0].proxies).toEqual(["HK-01"]);
+	});
+
+	it("renders nested proxy options in the same flow-style line", () => {
+		const rendered = renderClash(
+			[
+				{
+					sourceId: "vless",
+					tags: [],
+					proxy: {
+						name: "VLESS-WS",
+						type: "vless",
+						server: "edge.example.com",
+						port: 443,
+						uuid: "11111111-1111-1111-1111-111111111111",
+						tls: true,
+						network: "ws",
+						"ws-opts": {
+							path: "/websocket",
+							headers: { Host: "edge.example.com" },
+						},
+					},
+				},
+			],
+			[],
+			[],
+		);
+		const proxyLine = rendered
+			.split("\n")
+			.find((line) => line.trimStart().startsWith("- {name: VLESS-WS"));
+		expect(proxyLine).toContain(
+			"ws-opts: {path: /websocket, headers: {Host: edge.example.com}}",
+		);
+		expect(parse(rendered).proxies[0]["ws-opts"].headers.Host).toBe(
+			"edge.example.com",
+		);
 	});
 
 	it("keeps generated proxy names unique when suffixes already exist", async () => {

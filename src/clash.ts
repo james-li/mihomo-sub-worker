@@ -1,4 +1,4 @@
-import { parse, stringify } from "yaml";
+import { Document, isMap, isSeq, parse } from "yaml";
 import type { SubscriptionSource } from "./config";
 
 export type ClashProxy = Record<string, unknown> & {
@@ -157,5 +157,12 @@ export function renderClash(
 		"proxy-groups": groups,
 		rules,
 	};
-	return stringify(output, { lineWidth: 0 });
+	const document = new Document(output);
+	const proxyNodes = document.get("proxies", true);
+	if (isSeq(proxyNodes)) {
+		for (const proxyNode of proxyNodes.items) {
+			if (isMap(proxyNode)) proxyNode.flow = true;
+		}
+	}
+	return document.toString({ flowCollectionPadding: false, lineWidth: 0 });
 }

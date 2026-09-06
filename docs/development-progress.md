@@ -23,15 +23,16 @@
 - 修复：`protocol_url` 来源名称优先映射为 Clash 节点 `name`，覆盖 URI fragment 名称。
 - 新增：管理员页面展示当前域名的用户订阅二维码；SVG 在 Worker 内生成，仅 ADMIN_KEY 路由可访问且禁止缓存。
 - 修复：VLESS/Trojan WebSocket URI 缺少 `host=` 时，使用 SNI/servername/server 补全 `ws-opts.headers.Host`，兼容依赖 Host 路由的服务端。
+- 优化：生成的 `clash.yml` 使用单行 flow-style YAML 保存每个代理节点，代理组和规则仍保持块格式。
 
 ## 当前验证结果
 
 ```text
 Test Files  9 passed (9)
-Tests       34 passed (34)
+Tests       35 passed (35)
 TypeScript  passed
 Wrangler dry-run passed
-Bundle      312.46 KiB / gzip 72.31 KiB
+Bundle      312.01 KiB / gzip 72.23 KiB
 ```
 
 ## 已部署
@@ -40,7 +41,7 @@ Bundle      312.46 KiB / gzip 72.31 KiB
 - 正式域名：`fgfwsub.11190228.xyz`
 - 保留测试域名：`fgfwsubtest.11190228.xyz`
 - KV：`FGFW` (`4fce6691c9ab419392548465458d76f4`)
-- 当前版本：`a008a899-28e2-46f5-97fe-4ce8fef65f2c`
+- 当前版本：`9507b496-9af6-43f8-889a-949ee3b68345`
 - 线上验证：正式及测试域名的 admin 页面和二维码接口均返回 200；二维码为 `image/svg+xml`、`Cache-Control: no-store`，user-key 不能访问管理二维码接口（404）。
 
 ## 后续待完成

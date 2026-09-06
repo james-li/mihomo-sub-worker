@@ -52,12 +52,14 @@ function applyTransport(proxy: ClashProxy, params: URLSearchParams): void {
 	if (!network || network === "tcp") return;
 	if (network === "ws") {
 		proxy.network = "ws";
-		const headers: Record<string, string> = {};
-		const host = params.get("host");
-		if (host) headers.Host = host;
+		const host =
+			params.get("host") ||
+			params.get("sni") ||
+			params.get("servername") ||
+			String(proxy.server);
 		proxy["ws-opts"] = {
 			path: params.get("path") || "/",
-			...(Object.keys(headers).length ? { headers } : {}),
+			headers: { Host: host },
 		};
 		return;
 	}

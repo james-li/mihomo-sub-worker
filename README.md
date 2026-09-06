@@ -244,6 +244,7 @@ https://<YOUR_DOMAIN>/<ADMIN_KEY>
 - 每个来源保存一条完整协议链接；
 - 支持 `trojan://`、`vless://`、`vmess://`、`ss://`、`ssr://`、`hysteria2://`、`hy2://`、`tuic://`；
 - “来源名称”会覆盖协议链接 fragment，并作为最终节点名称；
+- VLESS/Trojan WebSocket 链接未提供 `host=` 时，会依次使用 `sni`、`servername` 或节点服务器地址生成 `ws-opts.headers.Host`；
 - 完整协议链接可能包含 UUID、密码或私钥，会原样保存在 KV 中。
 
 ### 标签规则

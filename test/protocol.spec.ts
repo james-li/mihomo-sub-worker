@@ -27,8 +27,27 @@ describe("protocol URL parsing", () => {
 			port: 443,
 			tls: true,
 			network: "ws",
+			"ws-opts": {
+				path: "/ws",
+				headers: { Host: "cdn.example.com" },
+			},
 			"client-fingerprint": "chrome",
 			"reality-opts": { "public-key": "public-key", "short-id": "abcd" },
+		});
+	});
+
+	it("uses SNI as the WebSocket Host when the URI omits host", () => {
+		const proxy = parseProtocolUrl(
+			"vless://11111111-1111-1111-1111-111111111111@edge.example.com:443?type=ws&security=tls&path=%2Fwebsocket&sni=origin.example.com#VLESS-WS",
+		);
+		expect(proxy).toMatchObject({
+			tls: true,
+			servername: "origin.example.com",
+			network: "ws",
+			"ws-opts": {
+				path: "/websocket",
+				headers: { Host: "origin.example.com" },
+			},
 		});
 	});
 

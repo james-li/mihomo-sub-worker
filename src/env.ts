@@ -1,5 +1,10 @@
+export interface ConfigKV {
+	get<T = unknown>(key: string, options?: { type: "json" }): Promise<T | null>;
+	put(key: string, value: string): Promise<void>;
+}
+
 export interface AppEnv {
-	CONFIG_KV: KVNamespace;
+	CONFIG_KV: ConfigKV;
 	ADMIN_KEY: string;
 	USER_KEY: string;
 	ACC4SSR_INI: string;

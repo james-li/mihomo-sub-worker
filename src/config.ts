@@ -3,7 +3,7 @@ import { validateUpstreamUrl } from "./upstream";
 import { parseProtocolUrl } from "./protocol";
 import { parseSubscriptionText } from "./subscription";
 
-export const CONFIG_KEY = "config:current";
+export const CONFIG_KEY = "config_current";
 export const MAX_SOURCES = 10;
 export const MAX_FILE_BYTES = 2 * 1024 * 1024;
 export const MAX_CONFIG_BODY_BYTES = 8 * 1024 * 1024;
@@ -202,7 +202,7 @@ function isStoredConfig(value: unknown): value is AppConfig {
 }
 
 export async function loadConfig(env: AppEnv): Promise<AppConfig> {
-	const stored = await env.CONFIG_KV.get<unknown>(CONFIG_KEY, "json");
+	const stored = await env.CONFIG_KV.get<unknown>(CONFIG_KEY, { type: "json" });
 	if (stored === null) return defaultConfig();
 	if (!isStoredConfig(stored)) throw new Error("Stored configuration is invalid");
 	return {

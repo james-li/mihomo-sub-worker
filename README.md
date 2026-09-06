@@ -1,11 +1,11 @@
 # fgfwsub-worker
 
-运行在 Cloudflare Workers 上的 Clash/Mihomo 多协议订阅聚合服务。它提供一个受 `ADMIN_KEY` 保护的管理页面，将远程订阅、本地文件和单条协议链接统一解析为 Clash YAML，并通过独立的 `USER_KEY` 输出过滤后的用户订阅。
+运行在腾讯 EdgeOne Makers Pages Functions 上的 Clash/Mihomo 多协议订阅聚合服务。它提供一个受 `ADMIN_KEY` 保护的管理页面，将远程订阅、本地文件和单条协议链接统一解析为 Clash YAML，并通过独立的 `USER_KEY` 输出过滤后的用户订阅。
 
 ## 文档导航
 
 - [部署前准备](#部署前准备)
-- [Cloudflare 配置](#cloudflare-配置)
+- [EdgeOne 配置](#edgeone-配置)
 - [本地开发](#本地开发)
 - [使用管理页面](#使用管理页面)
 - [下载订阅](#下载订阅)
@@ -43,74 +43,60 @@
 
 ## 部署前准备
 
-需要：
-
-- Cloudflare 账号；
-- Node.js 20 或更高版本；
-- 一个 Workers KV namespace；
-- 一份可通过 HTTPS 访问的 ACL4SSR INI；
-- 可选：已接入 Cloudflare 的自定义域名。
+需要腾讯云账号、Node.js 20 或更高版本、一个 EdgeOne Makers KV namespace，以及一份可通过 HTTPS 访问的 ACL4SSR INI。
 
 先克隆仓库并安装锁定版本的依赖：
 
 ```bash
 git clone <your-repository-url>
 cd fgfwsub-worker
+git switch edgeone
 npm ci
-npx wrangler login
+npx edgeone login
 ```
 
-## Cloudflare 配置
+## EdgeOne 配置
 
-### 1. 创建并绑定 KV
+### 1. 导入 Git 仓库
 
-创建 namespace：
+在 EdgeOne Makers 控制台导入本仓库，并设置：
+
+- 生产分支：`edgeone`
+- 安装命令：`npm ci`
+- 构建命令：`npm run build:edgeone`
+- 输出目录：`edgeone-dist`
+- Node.js：`22.11.0`
+- 自动部署：开启
+
+以上构建配置也保存在 `edgeone.json`。每次向 `edgeone` 分支推送提交都会触发生产部署。
+
+### 2. 创建并绑定 KV
+
+在 Makers 控制台进入“存储 → KV”，开通 KV 后创建 namespace，并将它绑定到项目。绑定变量名必须为 `CONFIG_KV`。
+
+应用只使用一个符合 EdgeOne 命名限制的 KV key：`config_current`。KV 最终一致，跨边缘节点更新最多可能短暂读取旧配置。
+
+### 3. 配置环境变量
+
+在项目的 Production 环境中配置以下变量：
+
+| 变量 | 说明 |
+|---|---|
+| `ADMIN_KEY` | 管理页面及管理 API 密钥 |
+| `USER_KEY` | 用户订阅下载密钥，必须与 `ADMIN_KEY` 不同 |
+| `ACC4SSR_INI` | ACL4SSR INI 的 HTTPS Raw URL |
+| `FILTER_SITE` | 可选，使用英文冒号 `:` 分隔的节点排除关键字 |
+
+可用下面的命令生成两个密钥，但不要把结果提交到 Git：
 
 ```bash
-npx wrangler kv namespace create CONFIG_KV
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 ```
 
-将命令返回的 ID 写入 `wrangler.jsonc`：
+`FILTER_SITE` 匹配会忽略英文大小写、空白差异和全角/半角差异。未配置或为空时使用内置关键字；配置后由自定义列表替换默认列表。
 
-```jsonc
-{
-  "kv_namespaces": [
-    {
-      "binding": "CONFIG_KV",
-      "id": "<YOUR_KV_NAMESPACE_ID>"
-    }
-  ]
-}
-```
-
-绑定名称必须保持为 `CONFIG_KV`。应用只使用一个 KV key：`config:current`。
-
-> 当前仓库的 `wrangler.jsonc` 带有原部署环境的 KV ID。复制部署时必须替换为你自己账号下的 namespace ID。
-
-### 2. 配置 ACL4SSR
-
-在 `wrangler.jsonc` 的 `vars` 中设置 ACL4SSR INI 地址：
-
-```jsonc
-{
-  "vars": {
-    "ACC4SSR_INI": "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/config/ACL4SSR_Online.ini",
-    "FILTER_SITE": "剩余流量:流量剩余:套餐到期:订阅到期:traffic remaining:quota remaining"
-  }
-}
-```
-
-`ACC4SSR_INI` 是 Worker 环境变量，不写入 KV。远程地址必须使用 HTTPS，且不能携带 URL 用户名或密码。
-
-`FILTER_SITE` 用于过滤节点名称中的信息或占位节点，多个关键字使用英文冒号 `:` 分隔。匹配会忽略英文大小写、空白差异和全角/半角字符差异。未配置或值为空时使用项目内置关键字；设置后由自定义列表替换默认列表。例如：
-
-```jsonc
-{
-  "vars": {
-    "FILTER_SITE": "剩余流量:套餐到期:官网:Traffic Remaining"
-  }
-}
-```
+### 4. 配置 ACL4SSR
 
 ACL4SSR 原始项目及配置目录：
 
@@ -131,24 +117,6 @@ ACL4SSR 原始项目及配置目录：
 
 如果需要使用本项目扩展的 `!`、`&&`、`!!TAG=`，或自定义 OpenAI 等分组，请 fork ACL4SSR 仓库、修改所选 INI，然后将 `ACC4SSR_INI` 指向 fork 中对应文件的 Raw URL。
 
-### 3. 配置访问密钥
-
-生成两个不同的高强度随机值：
-
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
-node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
-```
-
-分别写入 Cloudflare Secrets：
-
-```bash
-npx wrangler secret put ADMIN_KEY
-npx wrangler secret put USER_KEY
-```
-
-Wrangler 会交互式要求输入值。不要把密钥直接写入 `wrangler.jsonc`、README、提交记录或 CI 日志。`ADMIN_KEY` 与 `USER_KEY` 必须不同。
-
 权限区别：
 
 | 密钥 | 能力 |
@@ -158,72 +126,55 @@ Wrangler 会交互式要求输入值。不要把密钥直接写入 `wrangler.jso
 
 虽然 `USER_KEY` 权限较低，但它仍是订阅凭据，不建议公开传播。
 
-### 4. 配置访问域名
+### 5. 配置域名并部署
 
-若使用自定义域名，将 `wrangler.jsonc` 中的 `routes` 替换为自己的域名：
+在项目 Production 环境中添加自定义域名 `fgfwsub.cloudintel.com.cn`，按控制台提示配置 CNAME 和 HTTPS。若启用中国大陆节点，域名及服务需满足备案要求。
 
-```jsonc
-{
-  "routes": [
-    {
-      "pattern": "sub.example.com",
-      "custom_domain": true
-    }
-  ]
-}
-```
-
-自定义域名必须属于当前 Cloudflare 账号中的有效 Zone，且不能与已有 CNAME 冲突。不使用自定义域名时，可删除仓库中的 `routes`，改用 Cloudflare 分配的 `workers.dev` 地址。
-
-### 5. 生成类型并部署
-
-修改 bindings 后先生成类型，再执行完整验证和部署：
+发布前验证：
 
 ```bash
-npm run cf-typegen
 npm run typecheck
 npm run test:run
-npx wrangler deploy --dry-run
-npm run deploy
+npm run build:edgeone
 ```
 
-部署完成后，Wrangler 会显示 Worker 地址或已绑定的自定义域名。
+Git 项目开启自动部署后，推送 `edgeone` 分支即可发布。直接上传类型的项目也可以先执行 `npx edgeone login`，再运行 `npm run deploy`。
 
 ## 本地开发
 
 复制本地变量模板：
 
 ```bash
-cp .dev.vars.example .dev.vars
+cp .env.example .env
 ```
 
 Windows PowerShell：
 
 ```powershell
-Copy-Item .dev.vars.example .dev.vars
+Copy-Item .env.example .env
 ```
 
-编辑 `.dev.vars`：
+编辑 `.env`：
 
 ```dotenv
 ADMIN_KEY=replace-with-a-random-admin-key
 USER_KEY=replace-with-a-different-random-user-key
 ```
 
-`ACC4SSR_INI` 默认读取 `wrangler.jsonc` 的 `vars`。如需在本地覆盖，也可把它加入 `.dev.vars`：
+继续配置 ACL 和过滤变量：
 
 ```dotenv
 ACC4SSR_INI=https://example.com/path/to/acl.ini
 FILTER_SITE=剩余流量:套餐到期:Traffic Remaining
 ```
 
-启动本地 Worker：
+构建 EdgeOne 函数：
 
 ```bash
-npm run dev
+npm run build:edgeone
 ```
 
-`.dev.vars*` 已被 Git 忽略，只有不含真实密钥的 `.dev.vars.example` 会进入版本库。
+关联控制台项目后，直接运行 `npx edgeone makers dev` 启动本地调试器。不要把该命令配置到 `package.json` 或 `edgeone.json`，否则 CLI 会递归启动自身。`.env` 已被 Git 忽略，只有不含真实密钥的 `.env.example` 会进入版本库。
 
 ## 使用管理页面
 
@@ -233,7 +184,7 @@ npm run dev
 https://<YOUR_DOMAIN>/<ADMIN_KEY>
 ```
 
-管理页面支持新增、启用、禁用、修改和删除来源，并使用配置版本号防止多个页面相互覆盖。保存后配置整体写入 KV 的 `config:current`。
+管理页面支持新增、启用、禁用、修改和删除来源，并使用配置版本号防止多个页面相互覆盖。保存后配置整体写入 KV 的 `config_current`。
 
 ### 来源类型
 
@@ -385,7 +336,7 @@ custom_proxy_group=工作节点`select`.*`!!TAG=WORK,OFFICE
 
 ## 缓存与故障降级
 
-- 上游订阅、ACL 和远程 ruleset 使用 Cloudflare Cache API，不写入 KV；
+- 上游订阅、ACL 和远程 ruleset 使用 EdgeOne Cache API，不写入 KV；
 - 五分钟内的成功上游缓存直接复用，缓存最长保留约三十分钟用于失败回退；
 - 最终生成的 admin/user YAML 按配置版本分别缓存 60 秒；
 - 某个来源失败且无缓存时，该来源会被跳过，其他来源仍继续生成；
@@ -401,7 +352,7 @@ X-Fgfwsub-Failed-Sources: <数量>
 
 ## 应用限制
 
-以下是代码主动设置的限制，不代表 Cloudflare 套餐的全部限制：
+以下是代码主动设置的限制，不代表 EdgeOne 套餐的全部限制：
 
 | 项目 | 限制 |
 |---|---:|
@@ -415,12 +366,12 @@ X-Fgfwsub-Failed-Sources: <数量>
 | 单次上游请求超时 | 8 秒 |
 | 最大重定向次数 | 3 |
 
-实际可用规模还受 Cloudflare Workers 与 KV 套餐限制影响。部署较大订阅前请查看 Cloudflare 官方的 [Workers limits](https://developers.cloudflare.com/workers/platform/limits/) 和 [Workers KV limits](https://developers.cloudflare.com/kv/platform/limits/)。
+实际可用规模还受 EdgeOne Functions 与 KV 套餐限制影响。免费 KV 账户容量目前为 1 GB，配置在不同边缘节点间最多可能存在约 60 秒的最终一致性延迟。部署前请查看 [EdgeOne KV 文档](https://edgeone.ai/document/162227803822321664) 和 [EdgeOne 定价](https://pages.edgeone.ai/pricing)。
 
 ## 安全说明
 
-- `ADMIN_KEY`、`USER_KEY` 使用 Cloudflare Secrets；`ACC4SSR_INI`、`FILTER_SITE` 使用环境变量；这些配置都不会写入 KV。
-- KV 中的 `config:current` 会完整保存上传文件、远程订阅地址和协议链接，请限制 Cloudflare 账号及 KV 的访问权限。
+- `ADMIN_KEY`、`USER_KEY`、`ACC4SSR_INI`、`FILTER_SITE` 均通过 EdgeOne 环境变量配置，不写入 KV。
+- KV 中的 `config_current` 会完整保存上传文件、远程订阅地址和协议链接，请限制腾讯云账号及 KV 的访问权限。
 - 管理页面、管理 API 和二维码响应均禁止缓存，并设置严格的安全响应头。
 - 未知密钥统一返回 404，避免提示某个密钥是否接近有效值。
 - 远程来源只接受 HTTPS，并拒绝 URL 凭据、localhost、常见私网 IP 字面量及不安全重定向。
@@ -456,7 +407,7 @@ npx wrangler secret put USER_KEY
 
 ### 返回 502
 
-常见原因包括：全部订阅源不可用、订阅格式无法解析、ACL4SSR INI 无效、ACL ruleset 获取失败或代理组配置错误。先在管理页面执行“生成预览”，再检查 Cloudflare Worker 日志。
+常见原因包括：全部订阅源不可用、订阅格式无法解析、ACL4SSR INI 无效、ACL ruleset 获取失败或代理组配置错误。先在管理页面执行“生成预览”，再检查 EdgeOne Functions 日志。
 
 ### 配置已更新但订阅短时间没有变化
 
@@ -467,10 +418,10 @@ npx wrangler secret put USER_KEY
 ```bash
 npm run typecheck
 npm run test:run
-npx wrangler deploy --dry-run
+npm run build:edgeone
 ```
 
-测试使用 Cloudflare Workers Vitest 集成，覆盖鉴权、KV 配置、订阅解析、协议转换、ACL 表达式、缓存降级、`PRIVATE` 隔离、二维码和 YAML 输出。
+测试使用兼容 Workers Web API 的 Vitest 环境，并额外覆盖 EdgeOne 入口、环境变量映射和全局 KV 绑定。测试范围包括鉴权、KV 配置、订阅解析、协议转换、ACL 表达式、缓存降级、`PRIVATE` 隔离、二维码和 YAML 输出。
 
 进一步设计资料：
 
@@ -487,13 +438,13 @@ git diff --check
 npm ci
 npm run typecheck
 npm run test:run
-npx wrangler deploy --dry-run
+npm run build:edgeone
 ```
 
 提交前请确认：
 
-- `.dev.vars`、`.idea/`、日志、真实订阅文件和导出的 `clash.yml` 未被暂存；
-- `wrangler.jsonc` 中的 KV ID、域名和 ACL 地址是你确实准备公开的内容；
+- `.env`、`.dev.vars`、`.idea/`、日志、真实订阅文件和导出的 `clash.yml` 未被暂存；
+- `edgeone.json` 不包含 API Token、访问密钥或其他敏感数据；
 - README 和测试 fixture 中不含真实 `ADMIN_KEY`、`USER_KEY`、UUID、密码或订阅 URL；
 - 仓库根目录已添加与你发布意图一致的 `LICENSE` 文件。
 
@@ -507,14 +458,15 @@ npx wrangler deploy --dry-run
 
 - [yaml](https://github.com/eemeli/yaml)：解析和生成 YAML；
 - [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator)：在 Worker 内生成订阅二维码；
-- [Cloudflare Workers SDK](https://github.com/cloudflare/workers-sdk)：本地开发、测试与部署工具链。
+- [Tencent EdgeOne Pages Templates](https://github.com/TencentEdgeOne/pages-templates)：Functions 与 KV 项目结构参考；
+- [Cloudflare Workers SDK](https://github.com/cloudflare/workers-sdk)：兼容 Web API 的本地核心测试工具链。
 
 引用、修改或分发上游项目的代码与规则时，请分别遵守各上游仓库声明的许可证。本项目自己的许可证以仓库根目录的 `LICENSE` 文件为准。
 
-## Cloudflare 参考文档
+## EdgeOne 参考文档
 
-- [Workers 文档](https://developers.cloudflare.com/workers/)
-- [Wrangler 配置](https://developers.cloudflare.com/workers/wrangler/configuration/)
-- [Workers Secrets](https://developers.cloudflare.com/workers/configuration/secrets/)
-- [Workers KV 入门](https://developers.cloudflare.com/kv/get-started/)
-- [Custom Domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/)
+- [Pages Functions](https://edgeone.ai/document/162227908259442688)
+- [KV Storage](https://edgeone.ai/document/162227803822321664)
+- [EdgeOne CLI](https://edgeone.ai/document/162228053922476032)
+- [导入 Git 仓库](https://edgeone.ai/document/171937194382536704)
+- [自定义域名](https://edgeone.ai/document/175201436224495616)

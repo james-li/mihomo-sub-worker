@@ -70,7 +70,7 @@ describe("fgfwsub worker", () => {
 		expect(await response.json()).toMatchObject({ version: 0, sources: [] });
 	});
 
-	it("normalizes tags and stores only config:current", async () => {
+	it("normalizes tags and stores only config_current", async () => {
 		const response = await SELF.fetch(
 			"https://example.com/test-admin-key/api/config",
 			{
@@ -137,7 +137,7 @@ describe("fgfwsub worker", () => {
 		expect(await response.json()).toEqual({ error: "invalid_source_url" });
 	});
 
-	it("stores and returns complete file and protocol URL sources in config:current", async () => {
+	it("stores and returns complete file and protocol URL sources in config_current", async () => {
 		const protocolUrl = "trojan://admin-secret@example.com:443?security=tls#Private";
 		const fileContent = "vless://file-uuid@file.example.com:443?security=tls#FromFile";
 		const response = await SELF.fetch("https://example.com/test-admin-key/api/config", {

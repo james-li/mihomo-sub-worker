@@ -166,5 +166,11 @@ dist
 !.env.example
 .wrangler/
 
+# EdgeOne build output
+.edgeone/
+edge-functions/
+edgeone-dist/
+.tef_dist/
+
 # IDE settings
 .idea/

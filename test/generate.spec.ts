@@ -89,4 +89,38 @@ describe("subscription generation", () => {
 		expect(result.yaml).toContain("file.example.com");
 		expect(result.yaml).toContain("direct.example.com");
 	});
+
+	it("applies FILTER_SITE from the Worker environment", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async (input: RequestInfo | URL) => {
+				if (String(input) === "https://acl.example/config.ini") {
+					return new Response("ruleset=节点选择,[]FINAL\ncustom_proxy_group=节点选择`select`[]DIRECT`.*\n");
+				}
+				throw new Error("unexpected source fetch");
+			}),
+		);
+		const filteredConfig: AppConfig = {
+			version: 3,
+			updatedAt: "2026-09-06T00:00:00.000Z",
+			sources: [{
+				id: "file",
+				type: "file",
+				fileName: "nodes.yaml",
+				content: `proxies:
+  - { name: 自定义排除-HK, type: ss, server: excluded.example.com, port: 443, password: excluded }
+  - { name: HK-01, type: ss, server: hk.example.com, port: 443, password: real }
+`,
+				tags: [],
+				enabled: true,
+				format: "clash-yaml",
+			}],
+		};
+		const result = await generateSubscription(
+			{ ...fakeEnv, FILTER_SITE: "自定义排除:广告节点" },
+			filteredConfig,
+			"admin",
+		);
+		expect(result.sites.map((site) => site.name)).toEqual(["HK-01"]);
+	});
 });

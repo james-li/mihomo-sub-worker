@@ -3,6 +3,7 @@ export interface AppEnv {
 	ADMIN_KEY: string;
 	USER_KEY: string;
 	ACC4SSR_INI: string;
+	FILTER_SITE?: string;
 }
 
 export function assertValidEnv(env: AppEnv): void {

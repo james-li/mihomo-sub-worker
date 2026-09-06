@@ -98,7 +98,7 @@ export async function generateSubscription(
 		throw new GenerationError("all_subscription_sources_failed");
 	}
 	const tagged = sourceResults.flatMap((result) => result.proxies);
-	const proxies = await cleanProxies(tagged, visibility);
+	const proxies = await cleanProxies(tagged, visibility, env.FILTER_SITE);
 	if (proxies.length > MAX_NODES) throw new GenerationError("too_many_nodes");
 	if (enabledSources.length === 0) {
 		return {

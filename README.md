@@ -94,12 +94,23 @@ npx wrangler kv namespace create CONFIG_KV
 ```jsonc
 {
   "vars": {
-    "ACC4SSR_INI": "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/config/ACL4SSR_Online.ini"
+    "ACC4SSR_INI": "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/config/ACL4SSR_Online.ini",
+    "FILTER_SITE": "剩余流量:流量剩余:套餐到期:订阅到期:traffic remaining:quota remaining"
   }
 }
 ```
 
 `ACC4SSR_INI` 是 Worker 环境变量，不写入 KV。远程地址必须使用 HTTPS，且不能携带 URL 用户名或密码。
+
+`FILTER_SITE` 用于过滤节点名称中的信息或占位节点，多个关键字使用英文冒号 `:` 分隔。匹配会忽略英文大小写、空白差异和全角/半角字符差异。未配置或值为空时使用项目内置关键字；设置后由自定义列表替换默认列表。例如：
+
+```jsonc
+{
+  "vars": {
+    "FILTER_SITE": "剩余流量:套餐到期:官网:Traffic Remaining"
+  }
+}
+```
 
 ACL4SSR 原始项目及配置目录：
 
@@ -203,6 +214,7 @@ USER_KEY=replace-with-a-different-random-user-key
 
 ```dotenv
 ACC4SSR_INI=https://example.com/path/to/acl.ini
+FILTER_SITE=剩余流量:套餐到期:Traffic Remaining
 ```
 
 启动本地 Worker：
@@ -407,7 +419,7 @@ X-Fgfwsub-Failed-Sources: <数量>
 
 ## 安全说明
 
-- `ADMIN_KEY`、`USER_KEY` 使用 Cloudflare Secrets；`ACC4SSR_INI` 使用环境变量；三者都不会写入 KV。
+- `ADMIN_KEY`、`USER_KEY` 使用 Cloudflare Secrets；`ACC4SSR_INI`、`FILTER_SITE` 使用环境变量；这些配置都不会写入 KV。
 - KV 中的 `config:current` 会完整保存上传文件、远程订阅地址和协议链接，请限制 Cloudflare 账号及 KV 的访问权限。
 - 管理页面、管理 API 和二维码响应均禁止缓存，并设置严格的安全响应头。
 - 未知密钥统一返回 404，避免提示某个密钥是否接近有效值。

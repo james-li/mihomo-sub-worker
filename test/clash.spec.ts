@@ -28,7 +28,9 @@ describe("Clash parsing and filtering", () => {
 
 	it("filters information nodes, deduplicates, and isolates PRIVATE", async () => {
 		const yaml = `proxies:
-  - { name: 剩余流量 20GB, type: ss, server: info.example.com, port: 1 }
+  - { name: 剩余流量 20GB, type: ss, server: info.example.com, port: 443, password: placeholder }
+  - { name: "📊 流量剩余：19 GB", type: trojan, server: info-2.example.com, port: 443, password: placeholder }
+  - { name: "Traffic Remaining: 18 GB", type: vmess, server: info-3.example.com, port: 443, uuid: 11111111-1111-1111-1111-111111111111 }
   - { name: 流量优化-HK, type: ss, server: hk.example.com, port: 443, password: secret }
 `;
 		const publicItems = parseClashSubscription(yaml, source([]));
@@ -37,7 +39,7 @@ describe("Clash parsing and filtering", () => {
 			source(["PRIVATE"]),
 		);
 		const duplicate: TaggedProxy = {
-			...publicItems[1],
+			...publicItems[3],
 			tags: ["BACKUP"],
 			sourceId: "source-2",
 		};
@@ -73,6 +75,23 @@ describe("Clash parsing and filtering", () => {
 		expect(result).toHaveLength(1);
 		expect(result[0].tags).toEqual(["TAISHAN", "LLG"]);
 		expect(result[0].proxy.name).toBe("Node [TAISHAN] [LLG]");
+	});
+
+	it("supports colon-separated custom information-node keywords", async () => {
+		const items = parseClashSubscription(
+			`proxies:
+  - { name: 广告节点-HK, type: ss, server: ad.example.com, port: 443, password: ad }
+  - { name: 测试占位节点, type: ss, server: test.example.com, port: 443, password: test }
+  - { name: 剩余流量 20GB, type: ss, server: quota.example.com, port: 443, password: quota }
+  - { name: HK-01, type: ss, server: hk.example.com, port: 443, password: real }
+`,
+			source(),
+		);
+		const result = await cleanProxies(items, "admin", "广告节点:测试占位");
+		expect(result.map((item) => item.proxy.name)).toEqual([
+			"剩余流量 20GB",
+			"HK-01",
+		]);
 	});
 
 	it("renders YAML that can be parsed again", async () => {

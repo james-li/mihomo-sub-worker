@@ -14,8 +14,26 @@ export interface TaggedProxy {
 	sourceId: string;
 }
 
-const INFORMATION_PATTERN =
-	/(?:剩余|流量|到期|过期|套餐|官网|维护|expire|traffic|quota|reset)/i;
+export const DEFAULT_FILTER_SITE = [
+	"剩余流量",
+	"流量剩余",
+	"套餐到期",
+	"套餐过期",
+	"订阅到期",
+	"订阅过期",
+	"到期时间",
+	"到期日期",
+	"过期时间",
+	"过期日期",
+	"traffic remaining",
+	"traffic left",
+	"quota remaining",
+	"quota left",
+	"remaining traffic",
+	"left traffic",
+	"remaining quota",
+	"left quota",
+].join(":");
 
 function isObject(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -75,6 +93,25 @@ function isValidProxy(proxy: ClashProxy): boolean {
 	);
 }
 
+function normalizedFilterText(value: string): string {
+	return value.normalize("NFKC").toLocaleLowerCase().replace(/\s+/g, "");
+}
+
+function filterSiteKeywords(filterSite?: string): string[] {
+	const configured = filterSite?.trim() ? filterSite : DEFAULT_FILTER_SITE;
+	return [...new Set(
+		configured
+			.split(":")
+			.map(normalizedFilterText)
+			.filter(Boolean),
+	)];
+}
+
+function isInformationProxy(proxy: ClashProxy, keywords: string[]): boolean {
+	const name = normalizedFilterText(proxy.name);
+	return keywords.some((keyword) => name.includes(keyword));
+}
+
 async function fingerprint(proxy: ClashProxy): Promise<string> {
 	const identity = JSON.stringify([
 		proxy.type.toLowerCase(),
@@ -94,13 +131,13 @@ async function fingerprint(proxy: ClashProxy): Promise<string> {
 export async function cleanProxies(
 	items: TaggedProxy[],
 	visibility: "admin" | "user",
+	filterSite?: string,
 ): Promise<TaggedProxy[]> {
+	const excludedKeywords = filterSiteKeywords(filterSite);
 	const deduplicated = new Map<string, TaggedProxy>();
 	for (const item of items) {
 		if (!isValidProxy(item.proxy)) continue;
-		if (INFORMATION_PATTERN.test(item.proxy.name) && !hasRequiredAuthentication(item.proxy)) {
-			continue;
-		}
+		if (isInformationProxy(item.proxy, excludedKeywords)) continue;
 		if (visibility === "user" && item.tags.includes("PRIVATE")) continue;
 		const key = await fingerprint(item.proxy);
 		const existing = deduplicated.get(key);
